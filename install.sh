@@ -1,3 +1,51 @@
+#!/bin/bash
+GREEN="\e[32m"
+RESET="\e[0m"
+
+HAPROXY_CFG="/etc/haproxy/haproxy.cfg"
+HAPROXY_BAK="/etc/haproxy/haproxy.cfg.bak"
+HAPROXY_SERVICE="haproxy"
+
+# 检查 root 权限
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${GREEN}请以 root 用户运行此脚本。${RESET}"
+    exit 1
+fi
+
+backup_config() {
+    cp "$HAPROXY_CFG" "$HAPROXY_BAK"
+}
+
+restore_backup() {
+    cp "$HAPROXY_BAK" "$HAPROXY_CFG"
+}
+
+install_haproxy() {
+    apt update
+    apt install -y haproxy
+    backup_config
+    echo -e "${GREEN}HAProxy 已安装并备份原始配置为 $HAPROXY_BAK${RESET}"
+}
+
+uninstall_haproxy() {
+    systemctl stop $HAPROXY_SERVICE
+    apt purge -y haproxy
+    rm -f "$HAPROXY_CFG" "$HAPROXY_BAK"
+    systemctl daemon-reload
+    echo -e "${GREEN}HAProxy 及其配置文件已卸载。${RESET}"
+}
+
+update_haproxy() {
+    apt update
+    apt install --only-upgrade -y haproxy
+    echo -e "${GREEN}HAProxy 已升级。${RESET}"
+}
+
+restart_haproxy() {
+    systemctl restart $HAPROXY_SERVICE
+    echo -e "${GREEN}HAProxy 已重启。${RESET}"
+}
+
 add_forward_rule() {
     read -p "请输入本机监听端口: " LISTEN_PORT
     read -p "请输入目标 IP:PORT: " TARGET_ADDR
